@@ -1,6 +1,6 @@
 # AgentGym-RL: Training LLM Agents for Long-Horizon Decision Making through Multi-Turn Reinforcement Learning
 <p align="center">
-  📃 <a href="TODO" target="_blank">Paper</a > • 🌐 <a href="TODO" target="_blank">Project Page</a > • 🤗 <a href="https://huggingface.co/datasets/AgentGym/AgentGym-RL-Data-ID" target="_blank">AgentGym-RL-Data-ID</a >
+  📃 <a href="https://arxiv.org/abs/2509.08755" target="_blank">Paper</a > • 🌐 <a href="https://agentgym-rl.github.io/" target="_blank">Project Page</a > • 🤗 <a href="https://huggingface.co/datasets/AgentGym/AgentGym-RL-Data-ID" target="_blank">AgentGym-RL-Data-ID</a >
 </p >
 
 AgentGym-RL is a new framework to train LLM agents for **multi-turn** interactive decision-making through RL. It encompasses a wide variety of **real-world scenarios** and supports mainstream RL algorithms. Extensive experiments show that our framework and method substatially enhances the open-sourced 7B-scale model to a level that **match or surpass commercial models** on **27 tasks** across diverse environments.
@@ -9,8 +9,8 @@ AgentGym-RL is a new framework to train LLM agents for **multi-turn** interactiv
 
 ## 🔔 News
 
-- **🎉[2025-09-10]** You can develop your custom environment to AgentGym. The tutorial is [here](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/05-2nd-Development.md).
-- **🥳[2025-09-10]** Our paper is released on arXiv: [AgentGym-RL: Training LLM Agents for Long-Horizon Decision Making through Multi-Turn Reinforcement Learning](TODO)
+- **🎉[2025-09-10]** You can develop your custom environment to AgentGym and perform RL! The tutorial is [here](https://github.com/WooooDyy/AgentGym/blob/main/docs/tutorials/en/05-2nd-Development.md).
+- **🥳[2025-09-10]** Our paper is released on arXiv: [AgentGym-RL: Training LLM Agents for Long-Horizon Decision Making through Multi-Turn Reinforcement Learning](https://arxiv.org/abs/2509.08755)
 - **🍺[2025-09-10]** Our RL dataset and benchmark are available on Hugging Face: [AgentGym-RL-Data-ID](https://huggingface.co/datasets/AgentGym/AgentGym-RL-Data-ID)
 
 ## 🌟 Overview
@@ -103,7 +103,7 @@ We make following modifications to verl in order to develop AgentGym-RL:
 
 ## Performance
 
-We leverage Qwen2.5-3B and Qwen2.5-7B as our primary backbone models. We evaludate AgentGym-RL and ScalingInter-RL across **five scenarios** and include multiple closed-source models and open-source models for comparison. The evaluation results on WebArena benchmark are as follows, while results on other benchmarks can be found in our [paper](TODO).
+We leverage Qwen2.5-3B and Qwen2.5-7B as our primary backbone models. We evaludate AgentGym-RL and ScalingInter-RL across **five scenarios** and include multiple closed-source models and open-source models for comparison. The evaluation results on WebArena benchmark are as follows, while results on other benchmarks can be found in our [paper](https://arxiv.org/abs/2509.08755).
 
 ![](./assets/webarena_performance.png)
 
@@ -246,7 +246,15 @@ The Training module of AgentGym-RL is built upon [Verl](https://github.com/volce
 Please cite the following paper if you find AgentGym-RL helpful!
 
 ```
-TODO
+@misc{xi2025agentgymrltrainingllmagents,
+      title={AgentGym-RL: Training LLM Agents for Long-Horizon Decision Making through Multi-Turn Reinforcement Learning}, 
+      author={Zhiheng Xi and Jixuan Huang and Chenyang Liao and Baodai Huang and Honglin Guo and Jiaqi Liu and Rui Zheng and Junjie Ye and Jiazheng Zhang and Wenxiang Chen and Wei He and Yiwen Ding and Guanyu Li and Zehui Chen and Zhengyin Du and Xuesong Yao and Yufei Xu and Jiecao Chen and Tao Gui and Zuxuan Wu and Qi Zhang and Xuanjing Huang and Yu-Gang Jiang},
+      year={2025},
+      eprint={2509.08755},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2509.08755}, 
+}
 ```
 
 <div align="center">
