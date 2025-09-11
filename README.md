@@ -257,6 +257,19 @@ Please cite the following paper if you find AgentGym-RL helpful!
 }
 ```
 
+
+```
+@misc{xi2024agentgymevolvinglargelanguage,
+      title={AgentGym: Evolving Large Language Model-based Agents across Diverse Environments}, 
+      author={Zhiheng Xi and Yiwen Ding and Wenxiang Chen and Boyang Hong and Honglin Guo and Junzhe Wang and Dingwen Yang and Chenyang Liao and Xin Guo and Wei He and Songyang Gao and Lu Chen and Rui Zheng and Yicheng Zou and Tao Gui and Qi Zhang and Xipeng Qiu and Xuanjing Huang and Zuxuan Wu and Yu-Gang Jiang},
+      year={2024},
+      eprint={2406.04151},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2406.04151}, 
+}
+```
+
 <div align="center">
 <img src="./assets/fudannlp_logo.png" height=50><img src="./assets/bytedance.jpg" height=50><img src="./assets/shanghai_innovation_institute_logo.png" height=50>
 </div>
