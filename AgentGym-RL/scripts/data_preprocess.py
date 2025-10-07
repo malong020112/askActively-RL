@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    local_dataset_path = args.local_dataset_path or "./data.json"
+    local_dataset_path = args.local_dataset_path or "../../../data.jsonl"
 
     # 加载本地数据集（默认使用./data.json）
     dataset = datasets.load_dataset("json", data_files=local_dataset_path)
