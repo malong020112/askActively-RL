@@ -39,13 +39,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    local_dataset_path = args.local_dataset_path or "../../../data.jsonl"
+    local_dataset_path = args.local_dataset_path or "data/data.jsonl"
 
     # 加载本地数据集（默认使用./data.json）
-    dataset = datasets.load_dataset("json", data_files=local_dataset_path)
-
-    train_dataset = dataset["train"]
-    test_dataset = dataset["test"]
+    full_dataset = datasets.load_dataset("json", data_files=local_dataset_path, split="train")
+    split_datasets = full_dataset.train_test_split(test_size=0.2, seed=42, shuffle=True)
+    train_dataset = split_datasets["train"]
+    test_dataset = split_datasets["test"]
 
 
     def make_map_fn(split):
@@ -80,8 +80,9 @@ if __name__ == "__main__":
             }
         return process_fn
     
-    train_dataset = train_dataset.map(function=make_map_fn("train"), with_indices=True)
-    test_dataset = test_dataset.map(function=make_map_fn("test"), with_indices=True)
+    original_columns = train_dataset.column_names
+    train_dataset = train_dataset.map(function=make_map_fn("train"), with_indices=True, remove_columns=original_columns)
+    test_dataset = test_dataset.map(function=make_map_fn("test"), with_indices=True, remove_columns=original_columns)
 
     hdfs_dir = args.hdfs_dir
     local_save_dir = args.local_dir

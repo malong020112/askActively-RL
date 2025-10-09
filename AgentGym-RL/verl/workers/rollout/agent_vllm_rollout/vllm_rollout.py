@@ -228,72 +228,72 @@ class vLLMRollout(BaseRollout):
         rollout_bar = tqdm(total = max_rounds, desc="Running rounds", disable=torch.distributed.get_rank() != 0)
 
         
-        # def agent_step(i, idx):
-        #     """
-        #     响应处理：将模型生成的 token IDs 解码为人类可读文本
-        #     对话历史维护：将智能体（assistant）的回复添加到对话历史记录中
-        #     任务轮次管理：更新当前任务的交互轮次计数
-        #     环境交互：向环境发送智能体的动作并获取反馈
-        #     状态更新：更新轨迹处理器中的分数和完成状态
-        #     """
-        #     content = self.tokenizer.decode(response_ids[i], skip_special_tokens=True)
-        #     rollout_handler_ls[idx].add_assistant_message(self.tokenizer, content)
-        #     task_rounds[idx] += 1
-        #     try:
-        #         step_output = env_clients[idx].step(content)
-        #         state, rollout_handler_ls[idx].score, rollout_handler_ls[idx].done = (
-        #             step_output.state,
-        #             step_output.reward,
-        #             step_output.done,
-        #         )
-        #         rollout_handler_ls[idx].add_user_message(self.tokenizer, state)
-        #         return step_output.done
-        #     except Exception as e:
-        #         rollout_handler_ls[idx].score = 0
-        #         rollout_handler_ls[idx].done = True
-        #         print(f"Rollou step Error: {e} item id = {rollout_handler_ls[idx].item_id}")
-        #         return True
         def agent_step(i, idx):
+            """
+            响应处理：将模型生成的 token IDs 解码为人类可读文本
+            对话历史维护：将智能体（assistant）的回复添加到对话历史记录中
+            任务轮次管理：更新当前任务的交互轮次计数
+            环境交互：向环境发送智能体的动作并获取反馈
+            状态更新：更新轨迹处理器中的分数和完成状态
+            """
             content = self.tokenizer.decode(response_ids[i], skip_special_tokens=True)
             rollout_handler_ls[idx].add_assistant_message(self.tokenizer, content)
             task_rounds[idx] += 1
             try:
                 step_output = env_clients[idx].step(content)
-                state, original_reward, rollout_handler_ls[idx].done = (
+                state, rollout_handler_ls[idx].score, rollout_handler_ls[idx].done = (
                     step_output.state,
                     step_output.reward,
                     step_output.done,
                 )
-                
-                # 检测用户回答中是否含有"reject"
-                has_reject = 'reject' in state.lower()
-                
-                # 计算自定义奖励
-                # 基础分1分，每多一轮减0.3分
-                round_based_reward = 1.0 - (task_rounds[idx] - 1) * 0.3
-                
-                # 如果含有reject，奖励为-1分
-                if has_reject:
-                    custom_reward = -1.0
-                else:
-                    custom_reward = round_based_reward
-                    # 确保奖励不会低于0（可选）
-                    # custom_reward = max(0.0, round_based_reward)
-                
-                # 设置自定义奖励
-                rollout_handler_ls[idx].score = custom_reward
-                
-                # 记录是否包含reject（可选，用于调试）
-                rollout_handler_ls[idx].has_reject = has_reject
-                
                 rollout_handler_ls[idx].add_user_message(self.tokenizer, state)
                 return step_output.done
             except Exception as e:
-                # 异常情况下奖励为0
                 rollout_handler_ls[idx].score = 0
                 rollout_handler_ls[idx].done = True
                 print(f"Rollou step Error: {e} item id = {rollout_handler_ls[idx].item_id}")
                 return True
+        # def agent_step(i, idx):
+        #     content = self.tokenizer.decode(response_ids[i], skip_special_tokens=True)
+        #     rollout_handler_ls[idx].add_assistant_message(self.tokenizer, content)
+        #     task_rounds[idx] += 1
+        #     try:
+        #         step_output = env_clients[idx].step(content)
+        #         state, original_reward, rollout_handler_ls[idx].done = (
+        #             step_output.state,
+        #             step_output.reward,
+        #             step_output.done,
+        #         )
+                
+        #         # 检测用户回答中是否含有"reject"
+        #         has_reject = 'reject' in state.lower()
+                
+        #         # 计算自定义奖励
+        #         # 基础分1分，每多一轮减0.3分
+        #         round_based_reward = 1.0 - (task_rounds[idx] - 1) * 0.3
+                
+        #         # 如果含有reject，奖励为-1分
+        #         if has_reject:
+        #             custom_reward = -1.0
+        #         else:
+        #             custom_reward = round_based_reward
+        #             # 确保奖励不会低于0（可选）
+        #             # custom_reward = max(0.0, round_based_reward)
+                
+        #         # 设置自定义奖励
+        #         rollout_handler_ls[idx].score = custom_reward
+                
+        #         # 记录是否包含reject（可选，用于调试）
+        #         rollout_handler_ls[idx].has_reject = has_reject
+                
+        #         rollout_handler_ls[idx].add_user_message(self.tokenizer, state)
+        #         return step_output.done
+        #     except Exception as e:
+        #         # 异常情况下奖励为0
+        #         rollout_handler_ls[idx].score = 0
+        #         rollout_handler_ls[idx].done = True
+        #         print(f"Rollou step Error: {e} item id = {rollout_handler_ls[idx].item_id}")
+        #         return True
         while rounds < max_rounds and not all_done_flag:
             # get generation prompt
             generation_prompt_idxs = []
