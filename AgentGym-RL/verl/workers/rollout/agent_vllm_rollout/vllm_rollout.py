@@ -48,7 +48,7 @@ import requests
 from copy import deepcopy
 from verl.utils.model import compute_position_id_with_mask
 from verl.utils.torch_functional import get_eos_mask, pad_sequence_to_length
-from verl.utils.agentgym.client import init_env_client
+from verl.utils.usersimulation.user_llm import UserLLM
 from verl.workers.rollout.schemas import RolloutHandler, Message, _pre_process_inputs
 
 # TODO
@@ -58,7 +58,7 @@ from verl.workers.rollout.schemas import RolloutHandler, Message, _pre_process_i
 
 class vLLMRollout(BaseRollout):
 
-    def __init__(self, actor_module: nn.Module, rollout_config: DictConfig, agentgym_config: DictConfig, tokenizer, model_hf_config, **kwargs):
+    def __init__(self, actor_module: nn.Module, rollout_config: DictConfig, user_config: DictConfig, tokenizer, model_hf_config, **kwargs):
         """A vLLM rollout. It requires the module is supported by the vllm.
 
         Args:
@@ -70,7 +70,14 @@ class vLLMRollout(BaseRollout):
         """
         super().__init__()
         self.config = rollout_config
-        self.agentgym_config = agentgym_config
+        # normalize and validate user simulator config
+        self.user_config = dict(user_config) if user_config is not None else {}
+        # provide sane defaults to avoid KeyError inside UserLLM
+        if 'llm' not in self.user_config:
+            self.user_config['llm'] = 'openai'
+        missing_keys = [k for k in ('url', 'api_key') if k not in self.user_config]
+        if missing_keys:
+            raise ValueError(f"User simulator config missing required keys: {missing_keys}. Expected fields: url, api_key, optional: model, user_prompt, llm.")
         assert not (not rollout_config.enforce_eager and rollout_config.free_cache_engine), \
             "disable CUDA graph (enforce_eager = False) if free cache engine"
 
@@ -157,10 +164,12 @@ class vLLMRollout(BaseRollout):
                 input_ids = _pre_process_inputs(self.pad_token_id, prompts.batch['input_ids'][i])
                 attention_mask = _pre_process_inputs(0, prompts.batch['attention_mask'][i])
                 position_ids = compute_position_id_with_mask(torch.tensor(attention_mask)).tolist()
+                try:
+                    messages = [Message(role=prompt["role"], content=prompt["content"]) for prompt in raw_prompt]
+                except Exception as e:
+                    raise ValueError(f"Invalid raw_prompt format at index {i}: expect list of {{'role','content'}}, got {raw_prompt}. Error: {e}")
                 handler = RolloutHandler(
-                    messages=[
-                        Message(role=prompt["role"], content=prompt["content"]) for prompt in raw_prompt
-                    ],
+                    messages=messages,
                     task_name=prompts.non_tensor_batch["item_id"][i].split("_")[0],
                     item_id=int(prompts.non_tensor_batch["item_id"][i].split("_")[-1]),
                     score=0,
@@ -210,18 +219,12 @@ class vLLMRollout(BaseRollout):
         batch_size = prompts.batch['input_ids'].size(0)
         batch_size *= self.config.n
         rollout_handler_ls = self.preprocess_prompt_to_rollout_handler(prompts, n=self.config.n)
-        env_clients = [init_env_client(self.agentgym_config) for _ in range(batch_size)]
-        time.sleep(self.config.send_interval) # take a break before sendng request
+        # initialize user simulators per rollout instance
+        try:
+            user_clients = [UserLLM(**self.user_config) for _ in range(batch_size)]
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize UserLLM with config keys {list(self.user_config.keys())}. Error: {e}")
         all_done_flag = False
-        for idx, rollout_handler in enumerate(rollout_handler_ls):
-            try:
-                env_clients[idx].reset(rollout_handler.item_id)
-                task = env_clients[idx].observe()
-                rollout_handler.add_user_message(self.tokenizer, task)
-            except TimeoutError:
-                print(f"Reset Timeout: Webarena Env Timeout. item id = {rollout_handler.item_id}")
-                rollout_handler.done = True
-                rollout_handler.score = 0
 
         rounds = 0
         task_rounds = [0] * batch_size
@@ -240,18 +243,25 @@ class vLLMRollout(BaseRollout):
             rollout_handler_ls[idx].add_assistant_message(self.tokenizer, content)
             task_rounds[idx] += 1
             try:
-                step_output = env_clients[idx].step(content)
-                state, rollout_handler_ls[idx].score, rollout_handler_ls[idx].done = (
-                    step_output.state,
-                    step_output.reward,
-                    step_output.done,
-                )
-                rollout_handler_ls[idx].add_user_message(self.tokenizer, state)
-                return step_output.done
+                # build full history for the user simulator
+                history = [m.to_dict() for m in rollout_handler_ls[idx].messages]
+                # warn if last role is not 'user' after assistant reply appended
+                if len(history) == 0 or history[-1].get('role') != 'assistant':
+                    print(f"Warning: unexpected conversation state before user simulation at idx={idx}, last_role={history[-1].get('role') if history else None}")
+                user_msg, reward, done = user_clients[idx].generate(history)
+                rollout_handler_ls[idx].score = reward
+                rollout_handler_ls[idx].done = done
+                # append new user message to the conversation
+                if isinstance(user_msg, dict) and 'content' in user_msg:
+                    rollout_handler_ls[idx].add_user_message(self.tokenizer, user_msg["content"])
+                else:
+                    print(f"Warning: UserLLM returned unexpected message format at idx={idx}: {user_msg}")
+                    rollout_handler_ls[idx].done = True
+                return done
             except Exception as e:
                 rollout_handler_ls[idx].score = 0
                 rollout_handler_ls[idx].done = True
-                print(f"Rollou step Error: {e} item id = {rollout_handler_ls[idx].item_id}")
+                print(f"Rollout user step Error: {e} item id = {rollout_handler_ls[idx].item_id}")
                 return True
         
         while rounds < max_rounds and not all_done_flag:
@@ -266,16 +276,25 @@ class vLLMRollout(BaseRollout):
 
             rollout_bar.set_description(f"Rounds {rounds + 1}/{max_rounds} | Active agents per gpu: {len(not_done_idxs)}")
             # users can customize different sampling_params at different run
+            if len(generation_prompt_idxs) == 0:
+                print("No active conversations to generate. Breaking loop.")
+                break
             with self.update_sampling_params(**kwargs):
-                # 获取model输出
-                output = self.inference_engine.generate(
-                    prompts=None,
-                    prompt_token_ids=generation_prompt_idxs,
-                    sampling_params=self.sampling_params,
-                    use_tqdm=False)
+                try:
+                    # 获取model输出
+                    output = self.inference_engine.generate(
+                        prompts=None,
+                        prompt_token_ids=generation_prompt_idxs,
+                        sampling_params=self.sampling_params,
+                        use_tqdm=False)
+                except Exception as e:
+                    print(f"Model generation failed: {e}. Mark remaining tasks as done.")
+                    for idx in not_done_idxs:
+                        rollout_handler_ls[idx].done = True
+                    break
             response_ids = output[0].tolist()
             all_done_flag = True
-            time.sleep(self.config.send_interval) # take a break before sendng request
+            time.sleep(self.config.send_interval) # take a break before sending request
             if len(not_done_idxs) > 0:
                 with ThreadPoolExecutor(max_workers=len(not_done_idxs)) as executor:
                     step_dones = list(executor.map(
@@ -353,12 +372,12 @@ class vLLMRollout(BaseRollout):
             except Exception as e:
                 print(e)
 
-        # close clients
-        for client in env_clients:
+        # close user simulators
+        for client in user_clients:
             try:
                 client.close()
             except Exception as e:
-                print(f"Error during closing env: {e}")
+                print(f"Error during closing user simulator: {e}")
 
         batch = TensorDict(
             {
