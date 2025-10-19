@@ -6,8 +6,6 @@ export VLLM_ATTENTION_BACKEND=XFORMERS
 task_name="askActively"
 
 cd AgentGym-RL
-source activate
-conda activate agentgym-rl
 export VLLM_ATTENTION_BACKEND=XFORMERS
 export WANDB_BASE_URL=https://api.bandw.top
 
@@ -15,8 +13,8 @@ export WANDB_BASE_URL=https://api.bandw.top
 # start training
 wandb login xxx
 
-pure_agent_model_name="Qwen3-0.6B"
-agent_model_path="models/${pure_agent_model_name}"
+pure_agent_model_name="Qwen3-4B-Instruct-2507-sft"
+agent_model_path="/root/askActively-RL/AgentGym-RL/verl/models//${pure_agent_model_name}"
 
 kl_coef=0.001
 policy_learning_rate=1e-6
@@ -39,12 +37,10 @@ HYDRA_FULL_ERROR=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True WANDB_MODE=o
     algorithm.adv_estimator=grpo \
     algorithm.rounds_ctrl.type=fixed \
     algorithm.rounds_ctrl.rounds=20 \
-    data.train_file=AgentItemId/${task_name}_train.json \
+    data.train_file=/root/askActively-RL/data/train_rl.jsonl \
     data.train_batch_size=${train_batch_size} \
     data.max_prompt_length=1024 \
     data.max_response_length=4096 \
-    actor_rollout_ref.agentgym.task_name=${task_name} \
-    actor_rollout_ref.agentgym.timeout=600 \
     actor_rollout_ref.model.path=${agent_model_path} \
     actor_rollout_ref.actor.use_kl_loss=True \
     actor_rollout_ref.actor.kl_loss_coef=0.001 \

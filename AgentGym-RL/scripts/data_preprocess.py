@@ -1,10 +1,11 @@
 import argparse
-import os
+import os, sys
 
 import datasets
-
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 from verl.utils.hdfs_io import copy, makedirs
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -142,14 +143,28 @@ if __name__ == "__main__":
         remove_columns=original_columns,
     )
 
-    # Save
+    # # Save
+    # local_save_dir = os.path.expanduser(local_save_dir)
+    # os.makedirs(local_save_dir, exist_ok=True)
+    # out_path = os.path.join(local_save_dir, f"{args.split}_rl.parquet")
+    # mapped.to_parquet(out_path)
+    # print(f"Saved: {out_path}")
+
+    # # Optional HDFS mirror
+    # if args.hdfs_dir is not None:
+    #     makedirs(args.hdfs_dir)
+    #     copy(src=local_save_dir, dst=args.hdfs_dir)
+    #     print(f"Copied folder to HDFS: {args.hdfs_dir}")
+    # Save: 关键修改——从Parquet改为JSON Lines（每条数据一行）
     local_save_dir = os.path.expanduser(local_save_dir)
     os.makedirs(local_save_dir, exist_ok=True)
-    out_path = os.path.join(local_save_dir, f"{args.split}_rl.parquet")
-    mapped.to_parquet(out_path)
-    print(f"Saved: {out_path}")
+    # 1. 文件后缀从.parquet改为.jsonl（符合JSON Lines格式规范）
+    out_path = os.path.join(local_save_dir, f"{args.split}_rl.jsonl")
+    # 2. 用to_json替代to_parquet，lines=True表示每条数据一行
+    mapped.to_json(out_path, lines=True, force_ascii=False)
+    print(f"Saved JSON Lines dataset (each line is one data): {out_path}")
 
-    # Optional HDFS mirror
+    # Optional HDFS mirror（保持原有逻辑不变）
     if args.hdfs_dir is not None:
         makedirs(args.hdfs_dir)
         copy(src=local_save_dir, dst=args.hdfs_dir)
