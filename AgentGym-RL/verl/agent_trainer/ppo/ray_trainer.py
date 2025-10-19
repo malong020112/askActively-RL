@@ -513,7 +513,7 @@ class RayPPOTrainer(object):
             data_file=self.config.data.train_file,
             tokenizer=self.tokenizer,
             data_config=self.config.data,
-            agentgym_config=self.config.actor_rollout_ref.agentgym,
+            user_config=self.config.actor_rollout_ref.user,
         )
         # use sampler for better ckpt resume
         if self.config.data.shuffle:
