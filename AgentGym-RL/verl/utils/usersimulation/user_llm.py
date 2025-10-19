@@ -34,7 +34,7 @@ class UserLLM:
     def generate(self, history):
         user = OpenAI(
             api_key=self.api_key,
-            base_url = self.url,
+            base_url = self.api_url
         )
 
         reward = 0

@@ -118,6 +118,7 @@ if __name__ == "__main__":
             }
 
             return {
+                "item_id": example.get("item_id", f"askActively_{idx}"),
                 "data_source": "ask_actively",
                 "prompt": [
                     {"role": "system", "content": SYSTEM_PROMPT},

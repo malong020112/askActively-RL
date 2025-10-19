@@ -11,10 +11,10 @@ export WANDB_BASE_URL=https://api.bandw.top
 
 
 # start training
-wandb login xxx
+wandb login df93f01ed2c11399040d08d4a7d1c663d560c19d
 
-pure_agent_model_name="Qwen3-4B-Instruct-2507-sft"
-agent_model_path="/root/askActively-RL/AgentGym-RL/verl/models//${pure_agent_model_name}"
+pure_agent_model_name="Qwen2.5-3B-Instruct"
+agent_model_path="/root/askActively-RL/AgentGym-RL/verl/models/${pure_agent_model_name}"
 
 kl_coef=0.001
 policy_learning_rate=1e-6
