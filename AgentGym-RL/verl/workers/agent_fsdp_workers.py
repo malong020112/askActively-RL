@@ -293,7 +293,7 @@ class ActorRolloutRefWorker(Worker):
         log_gpu_memory_usage('Before building vllm rollout', logger=None)
         rollout = vLLMRollout(actor_module=self.actor_module_fsdp,
                                                  rollout_config=self.config.rollout,
-                                                 agentgym_config=self.config.agentgym,
+                                                 user_config=self.config.user,
                                                  tokenizer=self.tokenizer,
                                                  model_hf_config=self.actor_model_config)
         log_gpu_memory_usage('After building vllm rollout', logger=None)

@@ -60,12 +60,11 @@ actor_rollout_ref:
     log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
     log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
     ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size} # sp size
-  agentgym:
-      task_name: textcraft # Training task name of AgentGym.
-      env_addr: 'http://localhost:5000' # URL of the AgentGym environment server.
-      max_retries: 10 # Maximum retry times.
-      max_rounds: 10 # Maximum token length of a single response per turn.
-      timeout: 300 # timeout seconds.
+  user:
+      user_model: gemini-2.5-pro
+      api_url: "https://zjuapi.com/v1"
+      api_key: "sk-9NHRzu99nW5jhDMNqFrkAQf85qhF5l0nzqesnEYaBkkS3r6S"
+
   rollout:
     name: vllm
     temperature: 1.0

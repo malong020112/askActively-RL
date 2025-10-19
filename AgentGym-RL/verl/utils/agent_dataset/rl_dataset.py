@@ -30,7 +30,8 @@ from transformers import PreTrainedTokenizer, ProcessorMixin
 
 import verl.utils.torch_functional as verl_F
 from verl.utils.model import compute_position_id_with_mask
-from verl.utils.agentgym.client import init_env_client
+from verl.utils.usersimulation.user_llm import UserLLM
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,14 +66,14 @@ class RLHFDataset(Dataset):
         data_file: str,
         tokenizer: PreTrainedTokenizer,
         data_config: DictConfig,
-        agentgym_config: DictConfig,
+        user_config: DictConfig,
     ):
 
         self.data_file = copy.deepcopy(data_file)
         self.original_data_file = copy.deepcopy(data_file)  # use for resume
         self.tokenizer = tokenizer
         self.data_config = data_config
-        self.agentgym_config = agentgym_config
+        self.user_config = user_config
 
         self.cache_dir = os.path.expanduser(data_config.get("cache_dir", "~/.cache/verl/rlhf"))
         self.prompt_key = data_config.get("prompt_key", "prompt")
@@ -93,7 +94,7 @@ class RLHFDataset(Dataset):
         self.serialize_dataset = False
         self._read_files_and_tokenize()
         # get agentgym client
-        self.env_client = init_env_client(self.agentgym_config)
+        self.user_client = UserLLM(**self.user_config)
 
     def _read_files_and_tokenize(self):
         self.dataframe = datasets.load_dataset("json", data_files=self.data_file)["train"]
@@ -112,9 +113,18 @@ class RLHFDataset(Dataset):
 
     def _build_messages(self, example: dict):
         example["data_source"] = example[self.prompt_key].split("_")[0]
-        messages = [{"role": "user", "content": self.env_client.conversation_start[0]["value"]},
-                     {"role": "assistant", "content": self.env_client.conversation_start[1]["value"]}]
-        prompt_with_chat_template = "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n<|im_start|>user\n" + self.env_client.conversation_start[0]["value"] + "<|im_end|>\n<|im_start|>assistant\n" + self.env_client.conversation_start[1]["value"] + "<|im_end|>"
+        PROMPT = example.get("prompt")
+        task = example.get("extra_info", {}).get("interaction_kwargs", {}).get("user_item", {}).get("task", "")
+        
+        SYSTEM_PROMPT = ""
+        for item in PROMPT:
+            if item.get("role") == "system":
+                SYSTEM_PROMPT = item.get("content")
+                break  # 通常system prompt只有一条，找到后跳出循环
+        
+        
+        messages = [*PROMPT]
+        prompt_with_chat_template = f"<|im_start|>{SYSTEM_PROMPT}<|im_end|>\n<|im_start|>user\n" + task+ "<|im_end|>"
         return messages, prompt_with_chat_template
 
     def __getitem__(self, item):
@@ -137,7 +147,12 @@ class RLHFDataset(Dataset):
         row_dict['input_ids'] = input_ids[0]
         row_dict['attention_mask'] = attention_mask[0]
         row_dict['position_ids'] = position_ids[0]
-
+        row_dict['user_item'] = row_dict.get("extra_info", {}).get("interaction_kwargs", {}).get("user_item", {})
+        
+        user_messages = [msg for msg in messages if msg.get("role") == "user"]
+        last_user_content = user_messages[-1]["content"] if user_messages else None
+        row_dict['done'] = (last_user_content == "ACCEPT") if last_user_content is not None else False
+        
         # encode prompts without chat template
         if self.return_raw_chat:
             row_dict['raw_prompt'] = messages
